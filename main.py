@@ -60,6 +60,3 @@ class TakePictureApp(App):
 TakePictureApp().run()
         Clock.schedule_interval(game.update, 1.0 / 60.0)
         return game
-
-
-PongApp().run()
