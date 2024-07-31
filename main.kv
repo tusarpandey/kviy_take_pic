@@ -1,0 +1,80 @@
+# main.kv
+ScreenManager:
+    CameraScreen:
+    ResultScreen:
+
+<CameraScreen>:
+    name: 'camera'
+    canvas.before:
+        Color:
+            rgba: 0.1, 0.1, 0.1, 1  # Dark grey background
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    BoxLayout:
+        orientation: 'vertical'
+        Camera:
+            id: camera
+            index: 1
+            allow_stretch: True
+            keep_ratio: True
+            play: True
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint: None, None
+            size: self.minimum_size
+            spacing: dp(20)
+            padding: dp(20)
+            pos_hint: {'center_x': 0.5, 'y': 0}  # Center horizontally and align at the bottom
+
+            MDFloatingActionButton:
+                icon: "camera"
+                on_release: 
+                    root.capture() 
+                    root.manager.current = 'result'                  
+
+<ResultScreen>:
+    name: 'result'
+    MDBoxLayout:
+        orientation: 'vertical'
+        padding: dp(10)
+        spacing: dp(10)
+        size_hint: 1, 1
+        Image:
+            id: roi_image
+            allow_stretch: True
+            keep_ratio: True
+        MDTextField:
+            id: ocr_result
+            hint_text: 'OCR Prediction'
+            size_hint: None, None
+            width: dp(15 * 12)  # Approximate width for 15 characters (assuming average character width of 12dp)
+            height: dp(50)
+            multiline: False
+            padding: dp(10), dp(10)  # Adjust padding
+            pos_hint: {'center_x': 0.5}
+            line_color_normal: app.theme_cls.divider_color  # Set the color of the border
+            line_color_focus: app.theme_cls.primary_color  # Set the color of the border when focused
+            line_width: dp(2)  # Set the width of the border
+            mode: "rectangle"  # Set the mode to "rectangle" for a rectangular shape
+
+
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint: None, None
+            size: self.minimum_size
+            spacing: dp(50)
+            padding: dp(20)
+            pos_hint: {'center_x': 0.5, 'y': 0}  # Center horizontally and align at the bottom
+
+            MDFloatingActionButton:
+                icon: "thumb-down"
+                on_release: 
+                    root.manager.transition.direction = 'right' 
+                    root.manager.current = 'camera'
+
+            MDFloatingActionButton:
+                icon: "thumb-up"
+                on_release: 
+                    root.save_img()
+                    root.manager.current = 'camera'
