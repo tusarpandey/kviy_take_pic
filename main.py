@@ -1,68 +1,63 @@
-from random import randint
+__version__ = '0.1'
+
 from kivy.app import App
-from kivy.clock import Clock
-from kivy.properties import NumericProperty, ReferenceListProperty, ObjectProperty
-from kivy.uix.widget import Widget
-from kivy.vector import Vector
+from jnius import autoclass, cast
 
+from PIL import Image
 
-class PongPaddle(Widget):
-    score = NumericProperty(0)
+from android import activity, mActivity
+from android.permissions import request_permissions, Permission
+from android.storage import primary_external_storage_path
+request_permissions([Permission.CAMERA, Permission.READ_EXTERNAL_STORAGE])
 
-    def bounce_ball(self, ball):
-        if self.collide_widget(ball):
-            ball.velocity_x *= -1.1
+from kivy.logger import Logger
+from kivy.config import Config
+Config.set('kivy', 'log_level', 'debug')
+Config.set('kivy', 'log_dir', 'logs')
+Config.set('kivy', 'log_name', 'kivy_%y-%m-%d_%_.txt')
+Config.set('kivy', 'log_enable', 1)
+Config.write()
+Logger.debug("DEBUG: primary_external_storage_path")
+Logger.debug("DEBUG: %s", primary_external_storage_path())
 
+Intent = autoclass('android.content.Intent')
+MediaStore = autoclass('android.provider.MediaStore')
+Environment = autoclass('android.os.Environment')
+Context = autoclass("android.content.Context")
+FileProvider = autoclass('android.support.v4.content.FileProvider')
+PythonActivity = autoclass("org.kivy.android.PythonActivity").mActivity
 
-class PongBall(Widget):
-    velocity_x = NumericProperty(0)
-    velocity_y = NumericProperty(0)
-    velocity = ReferenceListProperty(velocity_x, velocity_y)
+class TakePictureApp(App):
+    def take_picture(self):
+        def create_img_file():
+            File = autoclass('java.io.File')
+            storageDir = Context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
 
-    # Latest Position = Current Velocity + Current Position
-    def move(self):
-        self.pos = Vector(*self.velocity) + self.pos
+            imageFile = File(
+                storageDir,
+                "temp.jpg"
+            )
+            imageFile.createNewFile()
+            return imageFile
 
+        intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
 
-# Update - moving the ball by calling the move() and other stuff
-class PongGame(Widget):
-    ball = ObjectProperty(None)
-    player1 = ObjectProperty(None)
-    player2 = ObjectProperty(None)
+        photoFile = create_img_file()
+        photoUri = FileProvider.getUriForFile(
+            Context.getApplicationContext(),
+            "org.test.takepicture.fileprovider",
+            photoFile
+        )
 
-    def serve_ball(self):
-        self.ball.velocity = Vector(4, 0).rotate(randint(0, 360))
+        parcelable = cast('android.os.Parcelable', photoUri)
 
-    def update(self, dt):
-        self.ball.move()
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, parcelable)
+        mActivity.startActivityForResult(intent, 0x123)
 
-        # bounce off top and bottom
-        if (self.ball.y < 0) or (self.ball.y > self.height - 50):
-            self.ball.velocity_y *= -1
+    def on_pause(self):
+        return True
 
-        # bounce off left and increase the score
-        if self.ball.x < 0:
-            self.ball.velocity_x *= -1
-            self.player1.score +=1
-        # bounce off right
-        if self.ball.x > self.width - 50:
-            self.ball.velocity_x *= -1
-            self.player2.score += 1
-
-        self.player1.bounce_ball(self.ball)
-        self.player2.bounce_ball(self.ball)
-
-    def on_touch_move(self, touch):
-        if touch.x < self.width / 1 / 4:
-            self.player1.center_y = touch.y
-        if touch.x > self.width * 3 / 4:
-            self.player2.center_y = touch.y
-
-
-class PongApp(App):
-    def build(self):
-        game = PongGame()
-        game.serve_ball()
+TakePictureApp().run()
         Clock.schedule_interval(game.update, 1.0 / 60.0)
         return game
 
